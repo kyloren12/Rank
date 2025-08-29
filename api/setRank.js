@@ -47,6 +47,7 @@ app.post("/api/setRank", async (req, res) => {
     groupId = ${groupId}`);
 
   try {
+    // 🔒 Auth key check
     if (key !== process.env.AUTH_KEY) {
       const reason = `Unauthorized attempt with key: ${key}`;
       console.log(reason);
@@ -58,6 +59,19 @@ app.post("/api/setRank", async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
+    // 🔒 Enforce group ID check
+    if (groupId && String(groupId) !== String(GROUP_ID)) {
+      const reason = `Group ID mismatch: request=${groupId}, env=${GROUP_ID}`;
+      console.error(reason);
+      await sendDiscordWebhook({
+        title: "❌ Promotion Failed",
+        description: reason,
+        color: 0xff0000
+      });
+      return res.status(400).json({ message: reason });
+    }
+
+    // Login handling
     let loggedIn = false;
     if (process.env.ROBLOX_COOKIE) {
       const cookieResponse = await noblox.setCookie(process.env.ROBLOX_COOKIE);
@@ -101,7 +115,7 @@ app.post("/api/setRank", async (req, res) => {
     const botUser = await noblox.getCurrentUser();
     console.log('Logged in as:', botUser.UserName);
 
-    const finalGroupId = groupId || GROUP_ID;
+    const finalGroupId = GROUP_ID;
     const username = await noblox.getUsernameFromId(userid);
     const thumbnail = `https://www.roblox.com/headshot-thumbnail/image?userId=${userid}&width=150&height=150&format=png`;
 
